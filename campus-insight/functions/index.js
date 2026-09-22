@@ -4,12 +4,33 @@ const { FieldValue } = require("firebase-admin/firestore");
 const express = require("express");
 const cors = require("cors");
 
-// Initialize Firebase Admin with Service Account Key
-const serviceAccount = require("./serviceAccountKey.json");
+// Safely initialize Firebase Admin for both Local Dev and Render
+let serviceAccount;
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // 1. Read JSON from Render Environment Variable
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (err) {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:", err.message);
+  }
+} else {
+  // 2. Fallback to local file for local testing
+  try {
+    serviceAccount = require("./serviceAccountKey.json");
+  } catch (err) {
+    console.warn("serviceAccountKey.json not found locally.");
+  }
+}
+
+if (serviceAccount) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} else {
+  // 3. Fallback for Firebase Emulator or default GCP credentials
+  admin.initializeApp();
+}
 
 const db = admin.firestore();
 const app = express();
