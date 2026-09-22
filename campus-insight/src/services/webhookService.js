@@ -1,10 +1,9 @@
 const RENDER_BACKEND_URL = "https://campus-insight-b9mp.onrender.com/api/v1";
-const ADVISING_BASE_URL = "https://advising-platform.aron078.workers.dev";
 
-// 1. Public Health Check GET /api/health
+// 1. Health Check via Render Backend Proxy (Bypasses Browser CORS)
 export async function checkAdvisingHealth() {
   try {
-    const res = await fetch(`${ADVISING_BASE_URL}/api/health`);
+    const res = await fetch(`${RENDER_BACKEND_URL}/advising-health`);
     const data = await res.json();
     return { status: res.status, ok: res.ok, data };
   } catch (err) {

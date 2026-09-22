@@ -70,6 +70,17 @@ app.get("/api/v1/lecturers", authenticatePartner, async (req, res) => {
   }
 });
 
+// Proxy Health Check (Bypasses Browser CORS)
+app.get("/api/v1/advising-health", async (req, res) => {
+  try {
+    const response = await fetch("https://advising-platform.aron078.workers.dev/api/health");
+    const data = await response.json();
+    return res.status(response.status).json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Outbound Webhook Trigger Proxy (Solves Browser CORS & Handles HMAC Signing)
 app.post("/api/v1/trigger-advising-webhook", async (req, res) => {
   const SHARED_SECRET = "3e0b00bc0c676a2d649a37ae7bba1e16b0aaf7447b64ffc7128c46e36a1115a5";
