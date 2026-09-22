@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const { FieldValue } = require("firebase-admin/firestore");
 const express = require("express");
 const cors = require("cors");
+const crypto = require("crypto"); // Native crypto module for HMAC signing
 
 // Safely initialize Firebase Admin for both Local Dev and Render
 let serviceAccount;
@@ -66,6 +67,46 @@ app.get("/api/v1/lecturers", authenticatePartner, async (req, res) => {
     return res.status(200).json({ status: "success", data: lecturerData });
   } catch (error) {
     return res.status(500).json({ error: error.message });
+  }
+});
+
+// Outbound Webhook Trigger Proxy (Solves Browser CORS & Handles HMAC Signing)
+app.post("/api/v1/trigger-advising-webhook", async (req, res) => {
+  const SHARED_SECRET = "3e0b00bc0c676a2d649a37ae7bba1e16b0aaf7447b64ffc7128c46e36a1115a5";
+  const payload = req.body;
+  const rawBody = JSON.stringify(payload);
+
+  // Compute HMAC SHA256 Signature over the raw JSON payload
+  const signature = crypto
+    .createHmac("sha256", SHARED_SECRET)
+    .update(rawBody)
+    .digest("hex");
+
+  try {
+    const response = await fetch("https://advising-platform.aron078.workers.dev/api/webhooks/partner", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Webhook-Signature": signature
+      },
+      body: rawBody
+    });
+
+    const responseText = await response.text();
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = responseText;
+    }
+
+    return res.status(response.status).json({
+      success: response.ok,
+      signatureSent: signature,
+      response: responseData
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 });
 
